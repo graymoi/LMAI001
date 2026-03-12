@@ -26,6 +26,27 @@
         "trigger_automation": true
       },
       "log_file": ".hooks/commit_log.json"
+    },
+    "session-start": {
+      "enabled": true,
+      "script": ".hooks/session-start.py",
+      "actions": {
+        "load_context": true,
+        "load_state": true,
+        "load_cache": true,
+        "print_summary": true
+      }
+    },
+    "session-end": {
+      "enabled": true,
+      "script": ".hooks/session-end.py",
+      "actions": {
+        "save_context": true,
+        "save_state": true,
+        "save_cache": true,
+        "cleanup_old": true,
+        "print_summary": true
+      }
     }
   },
   "automation": {
@@ -79,6 +100,51 @@
       "enabled": true,
       "auto_trigger": true,
       "config_file": ".skills/folder-automation/config.json"
+    },
+    "content-engineering": {
+      "enabled": true,
+      "auto_trigger": true,
+      "config_file": ".skills/content-engineering/config.json"
+    },
+    "verification-loop": {
+      "enabled": true,
+      "auto_trigger": true,
+      "config_file": ".skills/verification-loop/config.json"
+    },
+    "continuous-learning": {
+      "enabled": true,
+      "auto_trigger": true,
+      "config_file": ".skills/continuous-learning/config.json"
+    },
+    "token-optimization": {
+      "enabled": true,
+      "auto_trigger": true,
+      "config_file": ".skills/token-optimization/config.json"
+    },
+    "security-review": {
+      "enabled": true,
+      "auto_trigger": true,
+      "config_file": ".skills/security-review/config.json"
+    },
+    "subagent-orchestration": {
+      "enabled": true,
+      "auto_trigger": true,
+      "config_file": ".skills/subagent-orchestration/config.json"
+    },
+    "project-automation": {
+      "enabled": true,
+      "auto_trigger": true,
+      "config_file": ".skills/project-automation/config.json"
+    },
+    "claudeception-adapter": {
+      "enabled": true,
+      "auto_trigger": true,
+      "config_file": ".skills/claudeception-adapter/config.json"
+    },
+    "deerflow-adapter": {
+      "enabled": true,
+      "auto_trigger": true,
+      "config_file": ".skills/deerflow-adapter/config.json"
     }
   },
   "rules": {
