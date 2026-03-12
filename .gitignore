@@ -1,0 +1,121 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environment
+venv/
+env/
+ENV/
+TraeAI-3/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs
+*.log
+logs/
+*.log.*
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.backup
+.temp/
+.cache/
+
+# Project specific
+.trae/
+.trae/
+.hooks/commit_log.json
+.hooks/stats.json
+.hooks/hooks.log
+
+# Backup files
+*.backup
+*.old
+*.orig
+
+# Data files
+*.csv
+*.xlsx
+*.xls
+*.json
+*.xml
+!config.json
+!package.json
+
+# Documentation
+*.pdf
+*.docx
+*.doc
+*.pptx
+*.ppt
+!README.md
+!CHANGELOG.md
+
+# Secrets
+*.secret
+*.key
+*.pem
+*.p12
+*.pfx
+.env
+.env.local
+.env.*.local
+
+# Test coverage
+.coverage
+htmlcov/
+.pytest_cache/
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Build outputs
+dist/
+build/
+out/
+target/
+
+# Node modules (if any)
+node_modules/
+
+# Yarn
+yarn-error.log
+yarn-debug.log*
+.yarn-integrity
+
+# Misc
+*.pid
+*.seed
+*.pid.lock

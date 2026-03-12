@@ -1,0 +1,112 @@
+{
+  "hooks": {
+    "pre-commit": {
+      "enabled": true,
+      "script": ".hooks/pre-commit.py",
+      "checks": {
+        "file_format": true,
+        "file_size": true,
+        "file_encoding": true,
+        "document_quality": true,
+        "code_quality": true
+      },
+      "limits": {
+        "max_file_size": 10485760,
+        "max_line_length": 120,
+        "allowed_encodings": ["utf-8"]
+      }
+    },
+    "post-commit": {
+      "enabled": true,
+      "script": ".hooks/post-commit.py",
+      "actions": {
+        "log_commit": true,
+        "update_stats": true,
+        "notify_team": false,
+        "trigger_automation": true
+      },
+      "log_file": ".hooks/commit_log.json"
+    }
+  },
+  "automation": {
+    "document_automation": {
+      "enabled": true,
+      "trigger_on": ["commit", "file_change"],
+      "file_patterns": ["*.md", "*.docx"]
+    },
+    "code_automation": {
+      "enabled": true,
+      "trigger_on": ["commit", "file_change"],
+      "file_patterns": ["*.py", "*.js", "*.ts"]
+    },
+    "folder_automation": {
+      "enabled": true,
+      "trigger_on": ["schedule", "file_count_change"],
+      "schedule": "daily"
+    }
+  },
+  "notifications": {
+    "enabled": false,
+    "methods": ["desktop", "email"],
+    "email": {
+      "enabled": false,
+      "smtp_server": "",
+      "smtp_port": 587,
+      "username": "",
+      "password": "",
+      "from_address": "",
+      "to_addresses": []
+    },
+    "desktop": {
+      "enabled": true,
+      "timeout": 5000
+    }
+  },
+  "logging": {
+    "enabled": true,
+    "log_file": ".hooks/hooks.log",
+    "log_level": "INFO",
+    "max_file_size": 1048576,
+    "backup_count": 5
+  },
+  "skills": {
+    "bidding-automation": {
+      "enabled": true,
+      "auto_trigger": true,
+      "config_file": ".skills/bidding-automation/config.json"
+    },
+    "folder-automation": {
+      "enabled": true,
+      "auto_trigger": true,
+      "config_file": ".skills/folder-automation/config.json"
+    }
+  },
+  "rules": {
+    "file_naming": {
+      "enabled": true,
+      "enforce": true,
+      "patterns": {
+        "document": "[日期]-[项目名称]-[文档类型]-[版本].md",
+        "code": "[模块名称]-[功能描述].py",
+        "config": "[配置类型]-[配置名称].json"
+      }
+    },
+    "file_organization": {
+      "enabled": true,
+      "enforce": true,
+      "rules": {
+        "document_files": "03_文档和报告",
+        "code_files": "05_代码文件",
+        "data_files": "04_数据文件",
+        "tool_scripts": "02_工具和脚本",
+        "temp_files": "99_临时文件"
+      }
+    },
+    "commit_message": {
+      "enabled": true,
+      "enforce": true,
+      "pattern": "^(feat|fix|docs|style|refactor|test|chore)(\\(.+\\))?: .{10,}",
+      "example": "feat(文档): 添加需求规格说明书章节"
+    }
+  }
+}
