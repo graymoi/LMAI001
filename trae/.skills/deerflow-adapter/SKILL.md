@@ -1,8 +1,15 @@
-# DeerFlow适配技能
+# DeerFlow 2.0适配技能
 
 ## 技能概述
 
-本技能适配DeerFlow核心功能到Trae IDE，实现超级代理工具、子代理编排、沙箱执行、上下文工程和长期记忆。基于bytedance/deer-flow优化而来，针对标书编写项目定制。
+本技能适配DeerFlow 2.0核心功能到Trae IDE，实现超级代理工具、子代理编排、沙箱执行、上下文工程和长期记忆。基于bytedance/deer-flow 2.0优化而来，针对标书编写项目定制。
+
+**DeerFlow 2.0特性：**
+- 完全重写的架构（与v1不共享代码）
+- InfoQuest智能搜索集成
+- MCP服务器支持
+- IM通道支持
+- 多种沙箱模式（本地、Docker、Kubernetes）
 
 ---
 
@@ -52,7 +59,8 @@ class ToolManager:
             "web_search": WebSearchTool(),
             "web_fetch": WebFetchTool(),
             "file_operations": FileOperationsTool(),
-            "bash_execution": BashExecutionTool()
+            "bash_execution": BashExecutionTool(),
+            "infoquest_search": InfoQuestSearchTool()
         }
         self.custom_tools = {}
         self.mcp_tools = {}
@@ -97,6 +105,44 @@ class WebFetchTool:
         # 实现获取逻辑
         pass
 
+class InfoQuestSearchTool:
+    def __init__(self, api_key=None):
+        self.api_key = api_key or os.getenv("INFOQUEST_API_KEY")
+        self.base_url = "https://api.infoquest.com/v1"
+    
+    def execute(self, query, max_results=10):
+        """
+        执行InfoQuest智能搜索
+        
+        Args:
+            query: 搜索查询
+            max_results: 最大结果数
+            
+        Returns:
+            搜索结果列表
+        """
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json"
+        }
+        
+        payload = {
+            "query": query,
+            "max_results": max_results,
+            "include_crawling": True
+        }
+        
+        response = requests.post(
+            f"{self.base_url}/search",
+            headers=headers,
+            json=payload
+        )
+        
+        if response.status_code == 200:
+            return response.json().get("results", [])
+        else:
+            raise Exception(f"InfoQuest搜索失败: {response.status_code}")
+
 class FileOperationsTool:
     def execute(self, operation, **kwargs):
         """执行文件操作"""
@@ -110,7 +156,291 @@ class BashExecutionTool:
         pass
 ```
 
-### 2. 子代理编排
+### 2. MCP服务器支持
+
+**功能描述：** 支持可配置的MCP服务器和技能扩展
+
+**MCP服务器配置：**
+```python
+class MCPServerManager:
+    def __init__(self):
+        self.servers = {}
+        self.connections = {}
+    
+    def add_server(self, server_config):
+        """
+        添加MCP服务器
+        
+        Args:
+            server_config: 服务器配置
+                {
+                    "name": "服务器名称",
+                    "type": "http" | "sse",
+                    "url": "服务器URL",
+                    "oauth": {
+                        "grant_type": "client_credentials" | "refresh_token",
+                        "client_id": "客户端ID",
+                        "client_secret": "客户端密钥",
+                        "refresh_token": "刷新令牌"
+                    },
+                    "skills": ["技能列表"]
+                }
+        """
+        server_name = server_config["name"]
+        self.servers[server_name] = server_config
+        
+        # 连接服务器
+        if server_config["type"] == "http":
+            self.connect_http_server(server_config)
+        elif server_config["type"] == "sse":
+            self.connect_sse_server(server_config)
+    
+    def connect_http_server(self, config):
+        """连接HTTP MCP服务器"""
+        # 处理OAuth认证
+        if "oauth" in config:
+            token = self.get_oauth_token(config["oauth"])
+            headers = {
+                "Authorization": f"Bearer {token}",
+                "Content-Type": "application/json"
+            }
+        else:
+            headers = {"Content-Type": "application/json"}
+        
+        # 建立连接
+        self.connections[config["name"]] = {
+            "type": "http",
+            "url": config["url"],
+            "headers": headers,
+            "skills": config.get("skills", [])
+        }
+    
+    def connect_sse_server(self, config):
+        """连接SSE MCP服务器"""
+        # 处理OAuth认证
+        if "oauth" in config:
+            token = self.get_oauth_token(config["oauth"])
+        
+        # 建立SSE连接
+        self.connections[config["name"]] = {
+            "type": "sse",
+            "url": config["url"],
+            "token": token,
+            "skills": config.get("skills", [])
+        }
+    
+    def get_oauth_token(self, oauth_config):
+        """
+        获取OAuth令牌
+        
+        Args:
+            oauth_config: OAuth配置
+                
+        Returns:
+            访问令牌
+        """
+        grant_type = oauth_config["grant_type"]
+        
+        if grant_type == "client_credentials":
+            # 客户端凭证流程
+            response = requests.post(
+                oauth_config["token_url"],
+                data={
+                    "grant_type": "client_credentials",
+                    "client_id": oauth_config["client_id"],
+                    "client_secret": oauth_config["client_secret"]
+                }
+            )
+        elif grant_type == "refresh_token":
+            # 刷新令牌流程
+            response = requests.post(
+                oauth_config["token_url"],
+                data={
+                    "grant_type": "refresh_token",
+                    "refresh_token": oauth_config["refresh_token"]
+                }
+            )
+        
+        if response.status_code == 200:
+            return response.json().get("access_token")
+        else:
+            raise Exception(f"OAuth认证失败: {response.status_code}")
+    
+    def list_server_skills(self, server_name):
+        """列出服务器技能"""
+        if server_name not in self.connections:
+            return []
+        
+        return self.connections[server_name].get("skills", [])
+    
+    def execute_server_skill(self, server_name, skill_name, parameters):
+        """执行服务器技能"""
+        if server_name not in self.connections:
+            raise Exception(f"服务器{server_name}未连接")
+        
+        connection = self.connections[server_name]
+        
+        if connection["type"] == "http":
+            return self.execute_http_skill(connection, skill_name, parameters)
+        elif connection["type"] == "sse":
+            return self.execute_sse_skill(connection, skill_name, parameters)
+    
+    def execute_http_skill(self, connection, skill_name, parameters):
+        """执行HTTP技能"""
+        headers = connection["headers"]
+        payload = {
+            "skill": skill_name,
+            "parameters": parameters
+        }
+        
+        response = requests.post(
+            f"{connection['url']}/execute",
+            headers=headers,
+            json=payload
+        )
+        
+        if response.status_code == 200:
+            return response.json()
+        else:
+            raise Exception(f"技能执行失败: {response.status_code}")
+    
+    def execute_sse_skill(self, connection, skill_name, parameters):
+        """执行SSE技能"""
+        # SSE技能执行逻辑
+        pass
+```
+
+### 3. IM通道支持
+
+**功能描述：** 支持从消息应用接收任务
+
+**IM通道管理：**
+```python
+class IMChannelManager:
+    def __init__(self):
+        self.channels = {}
+        self.active_conversations = {}
+    
+    def add_channel(self, channel_config):
+        """
+        添加IM通道
+        
+        Args:
+            channel_config: 通道配置
+                {
+                    "name": "通道名称",
+                    "type": "wechat" | "slack" | "discord" | "telegram",
+                    "webhook_url": "Webhook URL",
+                    "api_key": "API密钥",
+                    "enabled": true
+                }
+        """
+        channel_name = channel_config["name"]
+        self.channels[channel_name] = channel_config
+        
+        # 设置Webhook
+        if "webhook_url" in channel_config:
+            self.setup_webhook(channel_config)
+    
+    def setup_webhook(self, config):
+        """设置Webhook"""
+        # Webhook设置逻辑
+        pass
+    
+    def receive_message(self, channel_name, message):
+        """
+        接收消息
+        
+        Args:
+            channel_name: 通道名称
+            message: 消息内容
+                
+        Returns:
+            任务ID
+        """
+        if channel_name not in self.channels:
+            raise Exception(f"通道{channel_name}不存在")
+        
+        # 解析消息
+        task = self.parse_message(message)
+        
+        # 创建任务
+        task_id = self.create_task(task)
+        
+        # 记录对话
+        self.active_conversations[task_id] = {
+            "channel": channel_name,
+            "message": message,
+            "task_id": task_id,
+            "timestamp": datetime.now().isoformat()
+        }
+        
+        return task_id
+    
+    def parse_message(self, message):
+        """解析消息"""
+        # 消息解析逻辑
+        # 识别任务类型、参数等
+        return {
+            "type": "task",
+            "content": message,
+            "parameters": {}
+        }
+    
+    def send_response(self, task_id, response):
+        """
+        发送响应
+        
+        Args:
+            task_id: 任务ID
+            response: 响应内容
+        """
+        if task_id not in self.active_conversations:
+            return
+        
+        conversation = self.active_conversations[task_id]
+        channel_name = conversation["channel"]
+        channel_config = self.channels[channel_name]
+        
+        # 发送响应到IM通道
+        self.send_to_channel(channel_config, response)
+    
+    def send_to_channel(self, channel_config, message):
+        """发送消息到通道"""
+        # 根据通道类型发送消息
+        channel_type = channel_config["type"]
+        
+        if channel_type == "wechat":
+            self.send_wechat_message(channel_config, message)
+        elif channel_type == "slack":
+            self.send_slack_message(channel_config, message)
+        elif channel_type == "discord":
+            self.send_discord_message(channel_config, message)
+        elif channel_type == "telegram":
+            self.send_telegram_message(channel_config, message)
+    
+    def send_wechat_message(self, config, message):
+        """发送微信消息"""
+        # 微信消息发送逻辑
+        pass
+    
+    def send_slack_message(self, config, message):
+        """发送Slack消息"""
+        # Slack消息发送逻辑
+        pass
+    
+    def send_discord_message(self, config, message):
+        """发送Discord消息"""
+        # Discord消息发送逻辑
+        pass
+    
+    def send_telegram_message(self, config, message):
+        """发送Telegram消息"""
+        # Telegram消息发送逻辑
+        pass
+```
+
+### 4. 子代理编排
 
 **功能描述：** 动态创建和管理子代理
 
@@ -276,11 +606,11 @@ class AgentOrchestrator:
         return final_result
 ```
 
-### 3. 沙箱和文件系统
+### 5. 沙箱和文件系统
 
 **功能描述：** 提供隔离的执行环境和文件系统
 
-**沙箱架构：**
+**沙箱模式：**
 ```python
 class Sandbox:
     def __init__(self, sandbox_type="local"):
@@ -292,13 +622,20 @@ class Sandbox:
     def initialize(self):
         """初始化沙箱"""
         if self.sandbox_type == "local":
+            # 本地执行模式
             self.workspace = Path(".sandbox/workspace")
             self.uploads = Path(".sandbox/uploads")
             self.outputs = Path(".sandbox/outputs")
         elif self.sandbox_type == "docker":
+            # Docker执行模式
             self.workspace = Path("/mnt/workspace")
             self.uploads = Path("/mnt/uploads")
             self.outputs = Path("/mnt/outputs")
+        elif self.sandbox_type == "kubernetes":
+            # Kubernetes执行模式
+            self.workspace = Path("/workspace")
+            self.uploads = Path("/uploads")
+            self.outputs = Path("/outputs")
         
         # 创建目录
         self.workspace.mkdir(parents=True, exist_ok=True)
@@ -313,6 +650,49 @@ class Sandbox:
         elif self.sandbox_type == "docker":
             # Docker执行
             return self.execute_docker(command)
+        elif self.sandbox_type == "kubernetes":
+            # Kubernetes执行
+            return self.execute_kubernetes(command)
+    
+    def execute_local(self, command):
+        """本地执行"""
+        import subprocess
+        result = subprocess.run(
+            command,
+            shell=True,
+            capture_output=True,
+            text=True,
+            cwd=self.workspace
+        )
+        return {
+            "returncode": result.returncode,
+            "stdout": result.stdout,
+            "stderr": result.stderr
+        }
+    
+    def execute_docker(self, command):
+        """Docker执行"""
+        import subprocess
+        docker_command = [
+            "docker", "run", "--rm",
+            "-v", f"{self.workspace}:/workspace",
+            "-v", f"{self.uploads}:/uploads",
+            "-v", f"{self.outputs}:/outputs",
+            "deerflow-sandbox",
+            command
+        ]
+        result = subprocess.run(docker_command, capture_output=True, text=True)
+        return {
+            "returncode": result.returncode,
+            "stdout": result.stdout,
+            "stderr": result.stderr
+        }
+    
+    def execute_kubernetes(self, command):
+        """Kubernetes执行"""
+        # Kubernetes执行逻辑
+        # 需要配置provisioner服务
+        pass
     
     def read_file(self, file_path):
         """读取文件"""
@@ -365,7 +745,7 @@ class FileSystem:
         }
 ```
 
-### 4. 上下文工程
+### 6. 上下文工程
 
 **功能描述：** 智能管理和优化上下文
 
@@ -451,7 +831,7 @@ class ContextManager:
         )
 ```
 
-### 5. 长期记忆
+### 7. 长期记忆
 
 **功能描述：** 跨会话持久化记忆和知识
 
@@ -607,36 +987,56 @@ class LongTermMemory:
 
 ## 工作流程
 
-### DeerFlow工作流程
+### DeerFlow 2.0工作流程
 
 ```mermaid
 graph TD
-    A[接收任务] --> B[主导代理分析]
-    B --> C[任务分解]
-    C --> D[创建子代理]
-    D --> E[分配工具]
-    E --> F[并行执行]
-    F --> G[沙箱执行]
-    G --> H[上下文管理]
-    H --> I[结果收集]
-    I --> J[结果整合]
-    J --> K[质量验证]
-    K --> L{通过验证?}
-    L -->|是| M[输出最终结果]
-    L -->|否| N[调整策略]
-    N --> F
-    M --> O[保存到记忆]
-    O --> P[结束]
+    A[接收任务] --> B{任务来源?}
+    B -->|IM通道| C[IM通道管理器]
+    B -->|直接输入| D[主导代理分析]
+    C --> D
+    D --> E[任务分解]
+    E --> F[创建子代理]
+    F --> G[分配工具]
+    G --> H{执行模式?}
+    H -->|并行| I[并行执行]
+    H -->|顺序| J[顺序执行]
+    H -->|超级| K[超级执行]
+    I --> L{沙箱模式?}
+    J --> L
+    K --> L
+    L -->|本地| M[本地沙箱]
+    L -->|Docker| N[Docker沙箱]
+    L -->|K8s| O[Kubernetes沙箱]
+    M --> P[上下文管理]
+    N --> P
+    O --> P
+    P --> Q[InfoQuest搜索]
+    Q --> R[MCP技能调用]
+    R --> S[结果收集]
+    S --> T[结果整合]
+    T --> U[质量验证]
+    U --> V{通过验证?}
+    V -->|是| W[输出最终结果]
+    V -->|否| X[调整策略]
+    X --> I
+    W --> Y[保存到记忆]
+    Y --> Z{IM通道?}
+    Z -->|是| AA[发送IM响应]
+    Z -->|否| AB[结束]
+    AA --> AB
 ```
 
 ---
 
 ## 配置参数
 
+### DeerFlow 2.0配置
+
 ```json
 {
-  "skill_name": "DeerFlow适配",
-  "skill_version": "1.0.0",
+  "skill_name": "DeerFlow 2.0适配",
+  "skill_version": "2.0.0",
   "enabled": true,
   "config": {
     "sandbox_type": "local",
@@ -647,43 +1047,106 @@ graph TD
     "context_compression": true,
     "auto_optimization": true
   },
-  "agents": {
-    "lead_agent": {
-      "enabled": true,
-      "model": "claude-sonnet-4",
-      "max_tokens": 200000
+  "models": {
+    "lead_model": {
+      "name": "claude-sonnet-4",
+      "display_name": "Claude Sonnet 4",
+      "max_tokens": 200000,
+      "temperature": 0.7
     },
-    "research_agent": {
-      "enabled": true,
-      "model": "claude-haiku",
-      "max_tokens": 100000
+    "research_model": {
+      "name": "claude-haiku",
+      "display_name": "Claude Haiku",
+      "max_tokens": 100000,
+      "temperature": 0.5
     },
-    "content_agent": {
-      "enabled": true,
-      "model": "claude-sonnet-4",
-      "max_tokens": 150000
+    "content_model": {
+      "name": "claude-sonnet-4",
+      "display_name": "Claude Sonnet 4",
+      "max_tokens": 150000,
+      "temperature": 0.7
     },
-    "quality_agent": {
-      "enabled": true,
-      "model": "claude-haiku",
-      "max_tokens": 50000
+    "quality_model": {
+      "name": "claude-haiku",
+      "display_name": "Claude Haiku",
+      "max_tokens": 50000,
+      "temperature": 0.3
     }
   },
-  "tools": {
-    "web_search": {
-      "enabled": true,
-      "provider": "tavily"
+  "sandbox": {
+    "type": "local",
+    "modes": [
+      "local",
+      "docker",
+      "kubernetes"
+    ],
+    "docker": {
+      "image": "deerflow-sandbox",
+      "workspace_mount": "/workspace",
+      "uploads_mount": "/uploads",
+      "outputs_mount": "/outputs"
     },
-    "web_fetch": {
-      "enabled": true
-    },
-    "file_operations": {
-      "enabled": true
-    },
-    "bash_execution": {
-      "enabled": true,
-      "sandbox": true
+    "kubernetes": {
+      "provisioner_url": "",
+      "namespace": "deerflow"
     }
+  },
+  "infoquest": {
+    "enabled": true,
+    "api_key": "$INFOQUEST_API_KEY",
+    "base_url": "https://api.infoquest.com/v1",
+    "max_results": 10,
+    "include_crawling": true
+  },
+  "mcp_servers": {
+    "enabled": true,
+    "servers": [
+      {
+        "name": "example_server",
+        "type": "http",
+        "url": "https://example-mcp.com",
+        "oauth": {
+          "grant_type": "client_credentials",
+          "token_url": "https://example-mcp.com/oauth/token",
+          "client_id": "$MCP_CLIENT_ID",
+          "client_secret": "$MCP_CLIENT_SECRET"
+        },
+        "skills": ["skill1", "skill2"]
+      }
+    ]
+  },
+  "im_channels": {
+    "enabled": true,
+    "channels": [
+      {
+        "name": "wechat",
+        "type": "wechat",
+        "webhook_url": "https://your-server.com/webhook/wechat",
+        "api_key": "$WECHAT_API_KEY",
+        "enabled": false
+      },
+      {
+        "name": "slack",
+        "type": "slack",
+        "webhook_url": "https://your-server.com/webhook/slack",
+        "api_key": "$SLACK_API_KEY",
+        "enabled": false
+      },
+      {
+        "name": "discord",
+        "type": "discord",
+        "webhook_url": "https://your-server.com/webhook/discord",
+        "api_key": "$DISCORD_API_KEY",
+        "enabled": false
+      },
+      {
+        "name": "telegram",
+        "type": "telegram",
+        "webhook_url": "https://your-server.com/webhook/telegram",
+        "api_key": "$TELEGRAM_API_KEY",
+        "enabled": false
+      }
+    ]
   },
   "memory": {
     "user_profile": {
@@ -711,11 +1174,11 @@ graph TD
 
 ## 使用示例
 
-### 示例1：生成完整标书
+### 示例1：使用InfoQuest搜索生成标书
 
 **用户输入：**
 ```
-生成天津背街小巷诊断数字化管理平台的完整标书
+使用智能搜索生成天津背街小巷诊断数字化管理平台的完整标书
 ```
 
 **执行过程：**
@@ -724,21 +1187,28 @@ graph TD
 lead_agent = Agent("lead_agent")
 task_analysis = lead_agent.analyze_task("生成完整标书")
 
-# 2. 任务分解
+# 2. 使用InfoQuest搜索
+infoquest = InfoQuestSearchTool()
+search_results = infoquest.execute(
+    query="天津背街小巷诊断数字化管理平台 标书",
+    max_results=10
+)
+
+# 3. 任务分解
 subtasks = lead_agent.decompose_task(task_analysis)
 
-# 3. 创建子代理
+# 4. 创建子代理
 research_agent_id = orchestrator.spawn_agent("research_agent", subtasks[0], context)
 content_agent_id = orchestrator.spawn_agent("content_agent", subtasks[1], context)
 quality_agent_id = orchestrator.spawn_agent("quality_agent", subtasks[2], context)
 
-# 4. 并行执行
+# 5. 并行执行
 results = orchestrator.execute_parallel(subtasks)
 
-# 5. 结果整合
+# 6. 结果整合
 final_result = orchestrator.consolidate_results(results)
 
-# 6. 保存到记忆
+# 7. 保存到记忆
 memory.add_knowledge(final_result)
 ```
 
@@ -747,7 +1217,7 @@ memory.add_knowledge(final_result)
 # 天津背街小巷诊断数字化管理平台标书
 
 ## 一、需求规格说明书
-[由内容代理生成]
+[由内容代理生成，基于InfoQuest搜索结果]
 
 ## 二、技术要求文档
 [由内容代理生成]
@@ -762,6 +1232,59 @@ memory.add_knowledge(final_result)
 [由质量代理生成]
 ```
 
+### 示例2：通过IM通道接收任务
+
+**场景：** 用户通过微信发送任务
+
+**执行过程：**
+```python
+# 1. IM通道管理器接收消息
+im_manager = IMChannelManager()
+task_id = im_manager.receive_message("wechat", "生成项目周报")
+
+# 2. 主导代理分析
+lead_agent = Agent("lead_agent")
+task = lead_agent.analyze_task("生成项目周报")
+
+# 3. 执行任务
+result = orchestrator.execute_task(task)
+
+# 4. 发送响应
+im_manager.send_response(task_id, result)
+```
+
+### 示例3：使用MCP服务器技能
+
+**场景：** 调用外部MCP服务器的技能
+
+**执行过程：**
+```python
+# 1. 添加MCP服务器
+mcp_manager = MCPServerManager()
+mcp_manager.add_server({
+    "name": "custom_server",
+    "type": "http",
+    "url": "https://custom-mcp.com",
+    "oauth": {
+        "grant_type": "client_credentials",
+        "token_url": "https://custom-mcp.com/oauth/token",
+        "client_id": "your_client_id",
+        "client_secret": "your_client_secret"
+    },
+    "skills": ["data_analysis", "chart_generation"]
+})
+
+# 2. 列出服务器技能
+skills = mcp_manager.list_server_skills("custom_server")
+
+# 3. 执行服务器技能
+result = mcp_manager.execute_server_skill(
+    "custom_server",
+    "data_analysis",
+    {"data": "项目数据"}
+)
+```
+
 ---
 
 ## 性能指标
@@ -772,15 +1295,55 @@ memory.add_knowledge(final_result)
 - **并行执行效率：** ≥ 80%
 - **结果整合速度：** ≥ 100结果/秒
 
-### 记忆效率
+### 搜索效率
+- **InfoQuest搜索速度：** ≥ 100结果/秒
 - **知识检索速度：** ≥ 1000条/秒
+- **MCP技能执行速度：** ≥ 50技能/秒
+
+### 记忆效率
 - **用户画像更新速度：** 实时
 - **偏好保存速度：** 实时
+- **知识库检索速度：** ≥ 1000条/秒
 - **会话记录速度：** 实时
+
+### 沙箱性能
+- **本地执行速度：** 实时
+- **Docker执行速度：** ≥ 90%本地速度
+- **Kubernetes执行速度：** ≥ 80%本地速度
 
 ---
 
-**技能版本：** V1.0
-**最后更新：** 2026年3月13日
-**维护人员：** AI助手
-**来源参考：** bytedance/deer-flow
+## DeerFlow 2.0新特性
+
+### 1. InfoQuest集成
+- **智能搜索：** BytePlus独立开发的搜索和爬虫工具集
+- **免费体验：** 支持免费在线体验
+- **高质量结果：** 提供更准确的搜索结果
+
+### 2. MCP服务器支持
+- **HTTP/SSE支持：** 支持HTTP和SSE协议
+- **OAuth认证：** 支持client_credentials和refresh_token流程
+- **可配置：** 灵活配置多个MCP服务器
+
+### 3. IM通道支持
+- **多平台支持：** 微信、Slack、Discord、Telegram
+- **Webhook集成：** 支持Webhook接收消息
+- **双向通信：** 支持接收任务和发送响应
+
+### 4. 增强沙箱模式
+- **本地模式：** 直接在主机执行
+- **Docker模式：** 在Docker容器中执行
+- **Kubernetes模式：** 在Kubernetes Pod中执行
+- **热重载：** 开发模式支持热重载
+
+### 5. 配置优化
+- **YAML配置：** 使用config.yaml配置
+- **环境变量：** 支持环境变量管理
+- **模型配置：** 灵活配置多个模型
+
+---
+
+**技能版本：** V2.0  
+**最后更新：** 2026年3月13日  
+**维护人员：** AI助手  
+**来源参考：** bytedance/deer-flow 2.0
