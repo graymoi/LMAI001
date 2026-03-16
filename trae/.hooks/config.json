@@ -150,6 +150,11 @@
       "enabled": true,
       "auto_trigger": true,
       "config_file": ".skills/cli-anything-adapter/config.json"
+    },
+    "agency-agents-adapter": {
+      "enabled": true,
+      "auto_trigger": true,
+      "config_file": ".skills/agency-agents-adapter/config.json"
     }
   },
   "rules": {

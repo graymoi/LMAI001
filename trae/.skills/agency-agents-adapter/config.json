@@ -1,0 +1,91 @@
+{
+  "enabled": true,
+  "auto_trigger": true,
+  "config": {
+    "agency_agents_path": "F:/AIlm/000项目管理/agency-agents",
+    "max_retries": 3,
+    "quality_gate_strict": true,
+    "context_persistence": true,
+    "handoff_logging": true
+  },
+  "nexus": {
+    "default_mode": "NEXUS-Sprint",
+    "phases": {
+      "full": 7,
+      "sprint": 5,
+      "micro": 1
+    },
+    "qa_loop": {
+      "enabled": true,
+      "max_retries": 3,
+      "agents": ["Evidence Collector", "Reality Checker", "API Tester"]
+    }
+  },
+  "agent_categories": {
+    "engineering": {
+      "enabled": true,
+      "priority": 1
+    },
+    "marketing": {
+      "enabled": true,
+      "priority": 2
+    },
+    "design": {
+      "enabled": true,
+      "priority": 3
+    },
+    "project_management": {
+      "enabled": true,
+      "priority": 1
+    },
+    "testing": {
+      "enabled": true,
+      "priority": 2
+    },
+    "sales": {
+      "enabled": true,
+      "priority": 3
+    },
+    "product": {
+      "enabled": true,
+      "priority": 2
+    },
+    "paid_media": {
+      "enabled": true,
+      "priority": 3
+    },
+    "game_development": {
+      "enabled": false,
+      "priority": 4
+    },
+    "spatial_computing": {
+      "enabled": false,
+      "priority": 4
+    },
+    "specialized": {
+      "enabled": true,
+      "priority": 3
+    },
+    "academic": {
+      "enabled": false,
+      "priority": 4
+    },
+    "support": {
+      "enabled": true,
+      "priority": 2
+    }
+  },
+  "performance": {
+    "agent_load_timeout": 100,
+    "search_timeout": 50,
+    "quality_gate_timeout": 1000,
+    "handoff_timeout": 10
+  },
+  "logging": {
+    "enabled": true,
+    "log_file": ".skills/agency-agents-adapter/agent_log.json",
+    "log_level": "INFO",
+    "max_file_size": 1048576,
+    "backup_count": 5
+  }
+}
