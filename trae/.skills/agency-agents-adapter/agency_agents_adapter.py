@@ -76,9 +76,9 @@ class AgencyAgentsAdapter:
     def _load_agent_index(self):
         """加载智能体索引"""
         categories = [
-            "engineering", "marketing", "design", "sales", "project_management",
-            "testing", "support", "product", "paid_media", "game_development",
-            "spatial_computing", "specialized", "academic"
+            "engineering", "marketing", "design", "sales", "project-management",
+            "testing", "support", "product", "paid-media", "game-development",
+            "spatial-computing", "specialized", "academic"
         ]
         
         for category in categories:
