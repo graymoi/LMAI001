@@ -1,0 +1,32 @@
+{
+  "enabled": true,
+  "auto_trigger": true,
+  "config": {
+    "output_dir": "cli_anything",
+    "max_history": 50,
+    "test_framework": "pytest",
+    "cli_framework": "click"
+  },
+  "supported_applications": [
+    "gimp",
+    "blender",
+    "inkscape",
+    "audacity",
+    "libreoffice",
+    "obs-studio",
+    "kdenlive",
+    "shotcut"
+  ],
+  "backend_engines": {
+    "gimp": "GEGL",
+    "blender": "bpy",
+    "inkscape": "SVG",
+    "audacity": "WAV",
+    "libreoffice": "ODF",
+    "obs-studio": "JSON",
+    "kdenlive": "MLT",
+    "shotcut": "MLT"
+  },
+  "cli_anything_path": "F:/AIlm/000项目管理/CLI-Anything",
+  "harness_path": "F:/AIlm/000项目管理/CLI-Anything/cli-anything-plugin/HARNESS.md"
+}

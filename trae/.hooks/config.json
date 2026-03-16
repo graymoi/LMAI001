@@ -145,6 +145,11 @@
       "enabled": true,
       "auto_trigger": true,
       "config_file": ".skills/deerflow-adapter/config.json"
+    },
+    "cli-anything-adapter": {
+      "enabled": true,
+      "auto_trigger": true,
+      "config_file": ".skills/cli-anything-adapter/config.json"
     }
   },
   "rules": {
